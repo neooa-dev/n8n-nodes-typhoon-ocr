@@ -1,8 +1,18 @@
-version: '3.8'
+#version: '3.8'
+
+x-defaults: &defaults
+  environment:
+    - DOCKER_DEFAULT_PLATFORM=linux/arm64
+  deploy:
+    resources:
+      limits:
+        cpus: '2'
 
 services:
   n8n:
+    <<: *defaults
     image: n8nio/n8n:latest
+    platform: linux/arm64
     restart: always
     ports:
       - "5678:5678"
@@ -21,8 +31,12 @@ services:
       - DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD:-n8n}
       - TYPHOON_OCR_API_KEY=${TYPHOON_OCR_API_KEY}
       - TYPHOON_OCR_URL=${TYPHOON_OCR_URL:-http://typhoon-ocr:8000}
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     volumes:
-      - ./datas/n8n:/home/node/.n8n
+      - ./datas/n8n:/home/node/.n8n:delegated
     depends_on:
       - postgres
       - typhoon-ocr
@@ -30,7 +44,9 @@ services:
       - n8n-tools
 
   postgres:
+    <<: *defaults
     image: postgres:15
+    platform: linux/arm64
     restart: always
     env_file:
       - .env
@@ -40,47 +56,71 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-n8n}
       - POSTGRES_NON_ROOT_USER=${POSTGRES_NON_ROOT_USER:-n8n}
       - POSTGRES_NON_ROOT_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD:-n8n}
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     volumes:
-      - ./datas/postgres:/var/lib/postgresql/data
+      - ./datas/postgres:/var/lib/postgresql/data:delegated
     networks:
       - n8n-tools
 
   ollama:
+    <<: *defaults
     image: ollama/ollama:latest
+    platform: linux/arm64
     restart: always
     ports:
       - "11434:11434"
     env_file:
       - .env
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     volumes:
-      - ./datas/ollama:/root/.ollama
+      - ./datas/ollama:/root/.ollama:delegated
     networks:
       - n8n-tools
 
   qdrant:
+    <<: *defaults
     image: qdrant/qdrant:latest
+    platform: linux/arm64
     restart: always
     ports:
       - "6333:6333"
       - "6334:6334"
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     volumes:
-      - ./datas/qdrant:/qdrant/storage
+      - ./datas/qdrant:/qdrant/storage:delegated
     networks:
       - n8n-tools
 
   typhoon-ocr:
+    <<: *defaults
     build:
       context: ./typhoon-ocr
       dockerfile: Dockerfile
+    platform: linux/arm64
     restart: always
     ports:
       - "8000:8000"
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     volumes:
-      - ./datas/typhoon-ocr:/app/data
+      - ./datas/typhoon-ocr:/app/data:delegated
     environment:
       - TYPHOON_OCR_API_KEY=${TYPHOON_OCR_API_KEY}
       - TYPHOON_OCR_HOST=${TYPHOON_OCR_HOST:-0.0.0.0}
@@ -89,7 +129,9 @@ services:
       - n8n-tools
 
   minio:
+    <<: *defaults
     image: minio/minio:latest
+    platform: linux/arm64
     restart: always
     ports:
       - "9000:9000"
@@ -97,21 +139,22 @@ services:
     env_file:
       - .env
     volumes:
-      - ./datas/minio:/data
+      - ./datas/minio:/data:delegated
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-miniopassword}
     command: server /data --console-address ":9001"
-    # healthcheck:
-    #   test: ["CMD", "mc", "ready", "local"]
-    #   interval: 30s
-    #   timeout: 20s
-    #   retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     networks:
       - n8n-tools
 
   minio-init:
+    <<: *defaults
     image: minio/mc:latest
+    platform: linux/arm64
     restart: "no"
     depends_on:
       - minio
@@ -132,14 +175,16 @@ services:
       - n8n-tools
 
   nca-toolkit:
+    <<: *defaults
     image: stephengpope/no-code-architects-toolkit:latest
+    platform: linux/amd64
     restart: always
     ports:
       - "8080:8080"
     env_file:
       - .env
     volumes:
-      - ./datas/nca-toolkit:/app/data
+      - ./datas/nca-toolkit:/app/data:delegated
     environment:
       - API_KEY=${NCA_API_KEY:-}
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
@@ -150,6 +195,10 @@ services:
     depends_on:
       - minio
       - minio-init
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     networks:
       - n8n-tools
 

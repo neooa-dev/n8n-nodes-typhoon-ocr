@@ -1,0 +1,14 @@
+{
+  "name": "n8n-nodes-typhoon-ocr",
+  "version": "1.0.0",
+  "description": "n8n community node for Typhoon OCR API integration",
+  "main": "nodes/TyphoonOcr/TyphoonOcr.node.js",
+  "keywords": [
+    "n8n",
+    "n8n-community-node",
+    "ocr",
+    "typhoon"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
